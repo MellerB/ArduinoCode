@@ -19,8 +19,8 @@ void loop()
     }
   else if (i<=n)
     {
-      G=map(i,(n/3)*2,n,0,255);
-      B=map(i,n,(n/3)*2,0,255);
+      B=map(i,(n/3)*2,n,0,255);
+      R=map(i,n,(n/3)*2,0,255);
       if (i==n)
         i=0;
       else
