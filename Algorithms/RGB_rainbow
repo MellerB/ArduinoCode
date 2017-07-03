@@ -1,0 +1,29 @@
+int i=0;
+int n=; //tutaj podajesz ile stopni przejść najlepiej żeby n%3==0
+
+
+
+void loop()
+{
+  if (i<=n/3)
+    {
+      R=map(i,0,n/3,0,255);
+      G=map(i,n/3,0,0,255);
+      i++;
+    }
+  else if (i<=(n/3)*2)
+    {
+      G=map(i,n/3,(n/3)*2,0,255);
+      B=map(i,(n/3)*2,n/3,0,255);
+      i++;
+    }
+  else if (i<=n)
+    {
+      G=map(i,(n/3)*2,n,0,255);
+      B=map(i,n,(n/3)*2,0,255);
+      if (i==n)
+        i=0;
+      else
+        i++;
+    }
+]
