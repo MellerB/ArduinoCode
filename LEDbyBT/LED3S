@@ -1,0 +1,359 @@
+#include <Adafruit_NeoPixel.h>
+#include <EEPROM.h>
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(8, 3, NEO_GRB + NEO_KHZ800);
+
+int strobo=0;
+//licznik optymalizacyjny, zapis do EEPROM co 255 iteracje pętli
+int optiCount=0;
+
+int range1=16;
+int range2=64;
+int range3=128;
+
+//nowe wartosci kolorow
+int REDequals;
+int GREENequals;
+int BLUEequals;
+
+//kolory wyswietlane
+int P1R=1, P1G=2, P1B=3;
+int P2R=1, P2G=2, P2B=3;
+int P3R=1, P3G=2, P3B=3;
+int P4R=1, P4G=2, P4B=3;
+
+//kolory przchowywane
+int T1R=0, T1G=0, T1B=0;///////////////////////////////////////////////////////////////////////////////////////////////////////
+int T2R=0, T2G=0, T2B=0;
+int T3R=0, T3G=0, T3B=0;
+int T4R=0, T4G=0, T4B=0;
+
+//indeksy ostatniej litery koloru
+int lastR=0;
+int lastG=0;
+int lastB=0;
+//indeksy ostatniej cyfry koloru
+int endR;
+int endG;
+int endB;
+
+int chosen=5;
+char color;
+int plus;
+
+String input;
+String command;
+String value;
+
+
+int iP1=0;
+int iP2=24;
+int iP3=48;
+int iP4=72;
+
+//tęcza
+int n=510;//stopnie
+int pairDif=36;//roznica miedzy parami w teczy
+int rainBowDelay=2;//opoznienie tęczy
+
+void goTo (int &P, int &T)
+{if(T!=P){delay(2);
+if(T>255)T=255;
+if(T<0)T=0;
+if(P<T)P++;
+if(P>T)P--;}}
+
+void fade()
+{goTo(P1R,T1R);goTo(P1G,T1G);goTo(P1B,T1B);
+goTo(P2R,T2R);goTo(P2G,T2G);goTo(P2B,T2B);
+goTo(P3R,T3R);goTo(P3G,T3G);goTo(P3B,T3B);
+goTo(P4R,T4R);goTo(P4G,T4G);goTo(P4B,T4B);}
+
+
+void goToR (int &P, int &T)
+{if(T!=P){delay(rainBowDelay);
+if(T>255)T=255;
+if(T<0)T=0;
+if(P<T)P++;
+if(P>T)P--;}}
+
+void fadeR()
+{goToR(P1R,T1R);goToR(P1G,T1G);goToR(P1B,T1B);
+goToR(P2R,T2R);goToR(P2G,T2G);goToR(P2B,T2B);
+goToR(P3R,T3R);goToR(P3G,T3G);goToR(P3B,T3B);
+goToR(P4R,T4R);goToR(P4G,T4G);goToR(P4B,T4B);}
+
+
+int range(int X)
+{
+if(X>192)
+   return 16;
+if(X<=16)
+   return 1;
+if(X<=32)
+   return 2;
+if(X<=48)
+   return 3;
+if(X<=64)
+   return 4;
+if(X<=96)
+   return 6;
+if (X<=128)
+   return 8;
+ if (X<=192)
+   return 12;
+
+
+if(X>255)
+return 0;
+if(X<0)
+return 0;
+}
+
+
+int endColor(int last)
+{
+  int i=0;
+for(i=last+1;i<input.length();i++)
+  if(input[i]=='R'||input[i]=='G'||input[i]=='B'||i==input.length())
+  break;
+    return i;
+
+}
+
+bool Rexist=0;
+bool Gexist=0;
+bool Bexist=0;
+
+
+void setup() {
+
+  // put your setup code here, to run once:
+Serial.begin(9600);
+pixels.begin();
+
+  pixels.setPixelColor(0, pixels.Color(64, 8, 0));
+  pixels.setPixelColor(7, pixels.Color(64, 8, 0));
+  pixels.show();
+  delay(150);
+  pixels.setPixelColor(1, pixels.Color(64, 32, 0));
+  pixels.setPixelColor(6, pixels.Color(64, 32, 0));
+  pixels.show();
+  delay(150);
+  pixels.setPixelColor(2, pixels.Color(16, 64, 0));
+  pixels.setPixelColor(5, pixels.Color(16, 64, 0));
+  pixels.show();
+  delay(150);
+  pixels.setPixelColor(3, pixels.Color(0, 16, 64));
+  pixels.setPixelColor(4, pixels.Color(0, 16, 64));
+  pixels.show();
+  delay(500);
+    //RED
+T1R=EEPROM.read(0);
+T2R=EEPROM.read(1);
+T3R=EEPROM.read(2);
+T4R=EEPROM.read(3);
+  //GREEN
+T1G=EEPROM.read(4);
+T2G=EEPROM.read(5);
+T3G=EEPROM.read(6);
+T4G=EEPROM.read(7);
+  //BLUE
+T1B=EEPROM.read(8);
+T2B=EEPROM.read(9);
+T3B=EEPROM.read(10);
+T4B=EEPROM.read(11);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  if(Serial.available() > 0)
+  {
+  input=Serial.readString();
+  command=String(input[0])+String(input[1])+String(input.length()/2);
+  color=input[0];
+Serial.println(input);
+  if(input[0]=='S')
+  strobo=input[1]-'0';
+
+  
+if(input[0]=='P')
+chosen=input[1]-48;
+
+Serial.println(chosen);
+//RGB split
+
+for(int i=0;i<input.length();i++)
+  {
+    switch(input[i])
+    {
+      case 'R':
+      {lastR=i;Rexist=true;}
+      break;
+      case 'G':
+      {lastG=i;Gexist=true;}
+      break;
+      case 'B':
+      {lastB=i;Bexist=true;}
+      break;
+    }
+  }
+
+
+Serial.println(lastR);
+
+Serial.println(lastG);
+
+Serial.println(lastB);
+
+
+ Serial.println(endColor(lastR));
+
+if(Rexist==true)
+REDequals=input.substring(lastR+2,endColor(lastR)).toInt();
+
+if(Gexist==true)
+GREENequals=input.substring(lastG+2,endColor(lastG)).toInt();
+
+if(Bexist==true)
+BLUEequals=input.substring(lastB+2,endColor(lastB)).toInt();
+
+Serial.println(REDequals);
+Serial.println(GREENequals);
+Serial.println(BLUEequals);
+  
+  
+Rexist=0;
+Gexist=0;
+Bexist=0;
+
+  
+//brightness modifying 
+  if(chosen==1){
+      T1R=REDequals;
+      T1G=GREENequals;
+      T1B=BLUEequals;}
+  
+  if(chosen==2){
+      T2R=REDequals;
+      T2G=GREENequals;
+      T2B=BLUEequals;}
+      
+  
+  if(chosen==3){
+    T3R=REDequals;
+      T3G=GREENequals;
+      T3B=BLUEequals;}
+  
+  if(chosen==4){
+      T4R=REDequals;
+      T4G=GREENequals;
+      T4B=BLUEequals;}
+
+
+  if(chosen==5){
+    
+      T1R=REDequals;
+      T1G=GREENequals;
+      T1B=BLUEequals;  
+      
+      T2R=REDequals;
+      T2G=GREENequals;
+      T2B=BLUEequals;
+      
+      T3R=REDequals;
+      T3G=GREENequals;
+      T3B=BLUEequals;
+
+      T4R=REDequals;
+      T4G=GREENequals;
+      T4B=BLUEequals;}
+
+   
+ }
+
+
+
+
+
+//RAINBOW
+if(input=="RB")
+{
+  if (iP1<=n/3){T1R=map(iP1,n/3,0,0,255);
+  T1G=map(iP1,0,n/3,0,255);iP1++;}
+  
+  else if (iP1<=(n/3)*2){T1G=map(iP1,(n/3)*2,n/3,0,255);
+  T1B=map(iP1,n/3,(n/3)*2,0,255);iP1++;}
+
+  else if (iP1<=n){T1B=map(iP1,n,(n/3)*2,0,255);
+  T1R=map(iP1,(n/3)*2,n,0,255);if (iP1==n) iP1=0;
+  else iP1++;}
+
+T2R=T1R+pairDif;
+T2G=T1G+pairDif;
+T2B=T1B+pairDif;
+
+T3R=T2R+pairDif;
+T3G=T2G+pairDif;
+T3B=T2B+pairDif;
+
+T4R=T3R+pairDif;
+T4G=T3G+pairDif;
+T4B=T3B+pairDif;
+
+
+fadeR();
+}else
+fade();//fade
+
+//EEPROM saving
+optiCount++;
+if(optiCount>256)
+{
+  //RED
+EEPROM.write(0, T1R);
+EEPROM.write(1, T2R);
+EEPROM.write(2, T3R);
+EEPROM.write(3, T4R);
+  //GREEN
+EEPROM.write(4, T1G);
+EEPROM.write(5, T2G);
+EEPROM.write(6, T3G);
+EEPROM.write(7, T4G);
+  //BLUE
+EEPROM.write(8, T1B);
+EEPROM.write(9, T2B);
+EEPROM.write(10, T3B);
+EEPROM.write(11, T4B);
+optiCount=0;
+}
+
+
+
+
+//color setting  
+  pixels.setPixelColor(0, pixels.Color(P1R, P1G, P1B));
+  pixels.setPixelColor(7, pixels.Color(P1R, P1G, P1B));
+
+  pixels.setPixelColor(1, pixels.Color(P2R, P2G, P2B));
+  pixels.setPixelColor(6, pixels.Color(P2R, P2G, P2B));
+
+  pixels.setPixelColor(2, pixels.Color(P3R, P3G, P3B));
+  pixels.setPixelColor(5, pixels.Color(P3R, P3G, P3B));
+
+  pixels.setPixelColor(3, pixels.Color(P4R, P4G, P4B));
+  pixels.setPixelColor(4, pixels.Color(P4R, P4G, P4B));
+pixels.show();
+//color to led
+if(strobo>0)
+{
+
+delay(250/strobo);
+pixels.clear();
+pixels.show();
+if(optiCount!=0)
+delay(350/strobo);
+}
+
+  //Serial.println(T1G);
+
+}
